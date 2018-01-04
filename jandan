@@ -1,0 +1,44 @@
+# -*- coding: UTF-8 -*-
+from selenium import webdriver
+from bs4 import BeautifulSoup
+import requests
+import threading
+import time
+
+def download(links):
+    filename = links.split('/')[-1]      #最后一个/后面的字符当文件名
+    print('正在下载', links)
+    retries = 0
+    while retries < 3:                   #下载失败时多尝试2次
+        try:
+            pic = requests.get(links)
+            with open('pics/' + filename, 'wb') as f:   #图片文件二进制写入
+                f.write(pic.content)
+        except requests.exceptions.RequestException as e:
+            retries += 1
+            print(e)
+            print(filename, '下载失败')
+        else:
+            print(filename, '下载完成')
+            break
+def crawl():
+    start_page = eval(input('请输入起始页面：'))
+    final_page = eval(input('请输入终止页面：'))
+    for page in range(start_page,final_page+1):
+        url = 'http://jandan.net/ooxx/page-%d/'%(page)
+        driver = webdriver.PhantomJS()
+        driver.set_window_size(1900,2000)
+        driver.get(url)
+
+        text = driver.page_source
+        soup = BeautifulSoup(text,'lxml')
+        divs = soup.find_all('div',class_="text")
+        for div in divs:
+            img = div.find('img')
+            link = img.get('src')
+            t = threading.Thread(target=download,args=(link,))
+            t.start()
+            while threading.active_count()>3:
+                time.sleep(3)
+if __name__ == '__main__':
+    crawl()
